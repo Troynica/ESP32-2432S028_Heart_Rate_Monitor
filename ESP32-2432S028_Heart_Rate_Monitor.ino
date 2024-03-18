@@ -190,7 +190,7 @@ void setup() {
 
 
 void loop() {
-  millis_c=millis();
+  millis_c  = millis();
   seconds_c = second();
 
   char   val_char[10];
@@ -206,8 +206,8 @@ void loop() {
     doConnect = false;
   }
 
-  // If we are connected to a peer BLE Server, update the characteristic each time we are reached
-  // with the current time since boot.
+  // If we are connected to a peer BLE Server, update the characteristic each time
+  // we are reached with the current time since boot.
   if (!connected) {
     if(doScan) BLEDevice::getScan()->start(0);  // this is just example to start scan after disconnect,
                                                 // most likely there is better way to do it in Arduino
@@ -221,20 +221,22 @@ void loop() {
 
     float bpm_calc = (float(60000) / float(ppi_latest)) + 0.05;
 
+    Serial.println("=========  Per measurement section  =========");
+
     dtostrf(bufferIndex, 6, 0, val_char);
-    Serial.print("        index: ");
+    Serial.print("          index: ");
     Serial.println(val_char);
 
     dtostrf(ppi_latest, 5, 0, val_char);
-    Serial.print("          PPI: ");
+    Serial.print("   received PPI: ");
     Serial.println(val_char);
 
     dtostrf(bpm_latest, 5, 0, val_char);
-    Serial.print("          BPM: ");
+    Serial.print("   received BPM: ");
     Serial.println(val_char);
 
     dtostrf(bpm_calc, 5, 1, val_char);
-    Serial.print("          BPM: ");
+    Serial.print(" calculated BPM: ");
     Serial.println(val_char);
 
     if ( bpm_min[t] == 0)          bpm_min[t] = 65535;
@@ -244,41 +246,18 @@ void loop() {
   }
 
 
-  // ===========================
-  // Run this section every hour
-  // ===========================
-  if (hour_c != hour_p ) {
-    hour_p = hour_c;
-    klok.drawNumber(hour_c / 10,   0, 16, 6);
-    klok.drawNumber(hour_c % 10,  29, 16, 6);
-
-    label0.fillSprite(1);
-    label0.setCursor(0, 0, 1);
-    if (hour_c < 10)
-      label0.print(" ");
-    label0.print(hour_c);
-    label0.print(":00");
-
-    label1.fillSprite(1);
-    label1.setCursor(0, 0, 1);
-    if (hour1 < 10)
-      label1.print(" ");
-    label1.print(hour1);
-    label1.print(":00");
-
-    label2.fillSprite(1);
-    label2.setCursor(0, 0, 1);
-    if (hour2 < 10)
-      label2.print(" ");
-    label2.print(hour2);
-    label2.print(":00");
-  }
 
   // =============================
   // Run this section every minute
   // =============================
   if (minute_c != minute_p ) {
     minute_p = minute_c;
+    hour_p   = hour_c;
+
+    Serial.println("=========  Per minute section  =========");
+
+    klok.drawNumber(hour_c / 10,   0, 16, 6);
+    klok.drawNumber(hour_c % 10,  29, 16, 6);
     klok.drawNumber(minute_c / 10,  75, 16, 6);
     klok.drawNumber(minute_c % 10, 104, 16, 6);
     klok.setCursor(0, 0, 2);
@@ -292,6 +271,23 @@ void loop() {
     klok.print(year());
     klok.pushSprite(157,0);
     klok_s.pushSprite(291,33);
+
+    // Refresh the labels in the graph
+    label0.fillSprite(1);
+    label0.setCursor(0, 0, 1);
+    if (hour_c < 10) label0.print(" ");
+    label0.print(hour_c);
+    label0.print(":00");
+    label1.fillSprite(1);
+    label1.setCursor(0, 0, 1);
+    if (hour1 < 10) label1.print(" ");
+    label1.print(hour1);
+    label1.print(":00");
+    label2.fillSprite(1);
+    label2.setCursor(0, 0, 1);
+    if (hour2 < 10) label2.print(" ");
+    label2.print(hour2);
+    label2.print(":00");
   }
 
   // ==================================
@@ -301,20 +297,19 @@ void loop() {
     halfMin_p = halfMin_c;
     t++;
     
+    Serial.println("=========  Per half-minute section  =========");
+
     graph.fillRect(0, 0,320, 30, TFT_BG_RED);
     graph.fillRect(0,30,320, 15, TFT_BG_ORANGE);
     graph.fillRect(0,45,320, 30, TFT_BG_GREEN);
     graph.fillRect(0,75,320, 75, TFT_BG_BLUE);
-    if (halfMin_c > 59)
-      graph.drawFastVLine(379-halfMin_c,0,150,TFT_BG_GREY);
+    if (halfMin_c > 59) graph.drawFastVLine(379-halfMin_c,0,150,TFT_BG_GREY);
     graph.drawFastVLine(319-halfMin_c,0,150,TFT_GREY);
     graph.drawFastVLine(259-halfMin_c,0,150,TFT_BG_GREY);
     graph.drawFastVLine(199-halfMin_c,0,150,TFT_GREY);
     graph.drawFastVLine(139-halfMin_c,0,150,TFT_BG_GREY);
-    if (halfMin_c < 80)
-      graph.drawFastVLine(79-halfMin_c,0,150,TFT_GREY);
-    if (halfMin_c < 20)
-      graph.drawFastVLine(19-halfMin_c,0,150,TFT_BG_GREY);
+    if (halfMin_c < 80) graph.drawFastVLine(79-halfMin_c,0,150,TFT_GREY);
+    if (halfMin_c < 20) graph.drawFastVLine(19-halfMin_c,0,150,TFT_BG_GREY);
 
     for (uint16_t i=t; i--; i<1) {
       //graph.drawPixel(319-i,199-bpm_max[t-i],TFT_WHITE);
@@ -338,6 +333,8 @@ void loop() {
   // Run this section every second
   // =============================
   if (seconds_c != seconds_p ) {
+
+    Serial.println("=========  Per second section  =========");
 
     seconds_p = seconds_c;
     minute_c  = minute();
@@ -380,6 +377,8 @@ void loop() {
   // =======================================
   if ( (millis_c - millis_p) >  250 ) {
     millis_p = millis_c;
+
+    Serial.println("=========  Per quarter-second section  =========");
 
     blink1=!blink1;
     if ( blink1 ){
