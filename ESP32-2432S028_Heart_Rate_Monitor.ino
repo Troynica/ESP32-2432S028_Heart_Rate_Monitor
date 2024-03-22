@@ -4,6 +4,20 @@
 #include <Wire.h>
 #include <DS1307RTC.h>
 
+#define DEBUG 1
+#define PROGRAM_NAME    "ESP32-2432S028 Heart Rate Monitor"
+#define PROGRAM_VERSION "0.3a"
+
+
+#if DEBUG == 1
+#define debug(x)   Serial.print(x)
+#define debugln(x) Serial.println(x)
+#else
+#define debug(x)
+#define debugln(x)
+#endif
+
+
 #define TFT_GREY      0x5AEB
 #define TFT_BG_RED     10240
 #define TFT_BG_ORANGE  12512
@@ -90,6 +104,12 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
 
 void setup() {
+  Serial.begin(115200);
+  debugln(F("Setup start"));
+  Serial.println();
+  Serial.println(F(PROGRAM_NAME));
+  Serial.print(F("version: "));
+  Serial.println(F(PROGRAM_VERSION));
   BLEDevice::init("");
   
   // Retrieve a Scanner and set the callback we want to use to be informed when we
@@ -102,9 +122,7 @@ void setup() {
   pBLEScan->setActiveScan(true);
   pBLEScan->start(5, false);
 
-
   Wire.begin(27,22);
-  Serial.begin(115200);
   display.init();
   display.setRotation(1);
   display.invertDisplay(true);
@@ -115,8 +133,10 @@ void setup() {
   display.print("BPM:");
 
   setSyncProvider(RTC.get);
-  //if (timeStatus() == timeSet) Serial.println("RTC has set the system time");      
-  //else                         Serial.println("Unable to sync with the RTC");
+#if DEBUG == 1
+  if (timeStatus() == timeSet) Serial.println("RTC has set the system time");      
+  else                         Serial.println("Unable to sync with the RTC");
+#endif
  
   label0.setColorDepth(1);
   label0.setTextColor(TFT_WHITE,TFT_BLACK);
@@ -173,9 +193,9 @@ void setup() {
   
   ratebar.pushSprite(104,1);
  
-  Serial.println();
-  Serial.print("Custom color calc: ");
-  Serial.println(display.color565(40, 40, 40));
+  debugln();
+  debug("Custom color calc: ");
+  debugln(display.color565(40, 40, 40));
 
   minute_c  = minute();
   halfMin_c = (minute_c * 2) + (seconds_c / 30);
@@ -185,6 +205,8 @@ void setup() {
   else            hour1 = hour_c - 1;
   if (hour1 < 1)  hour2 = 23;
   else            hour2 = hour1 - 1;
+  debugln(F("Setup end"));
+  debugln();
 }
 
 
@@ -192,25 +214,28 @@ void setup() {
 void loop() {
   millis_c  = millis();
   seconds_c = second();
+  char val_char[10];
 
-  char   val_char[10];
-  // If the flag "doConnect" is true then we have scanned for and found the desired
-  // BLE Server with which we wish to connect.  Now we connect to it.  Once we are 
-  // connected we set the connected flag to be true.
   if (doConnect == true) {
+    debug(F("var doConect == "));
+    debugln(doConnect);
+    debugln(F("Initiating connection to sensor..."));
     if (connectToServer()) {
-      Serial.println("-= Connected to BLE server =-");
+      Serial.println(F("Connection to sensor succeeded"));
     } else {
-      Serial.println("-= Connection to BLE server failed =-");
+      Serial.println(F("Connection to sensor failed"));
     }
     doConnect = false;
+    debugln(F("-"));
   }
 
-  // If we are connected to a peer BLE Server, update the characteristic each time
-  // we are reached with the current time since boot.
   if (!connected) {
+    debug(F("var connected == "));
+    debugln(connected);
+    debugln(F("Scanning for sensor..."));
     if(doScan) BLEDevice::getScan()->start(0);  // this is just example to start scan after disconnect,
                                                 // most likely there is better way to do it in Arduino
+    debugln(F("-"));
   }
 
   // =====================================================
@@ -221,7 +246,8 @@ void loop() {
 
     float bpm_calc = (float(60000) / float(ppi_latest)) + 0.05;
 
-    Serial.println("=========  Per measurement section  =========");
+#if DEBUG ==1
+    Serial.println(F("=========  Per measurement section  ========="));
 
     dtostrf(bufferIndex, 6, 0, val_char);
     Serial.print("          index: ");
@@ -238,6 +264,7 @@ void loop() {
     dtostrf(bpm_calc, 5, 1, val_char);
     Serial.print(" calculated BPM: ");
     Serial.println(val_char);
+#endif
 
     if ( bpm_min[t] == 0)          bpm_min[t] = 65535;
     if ( bpm_latest < bpm_min[t] ) bpm_min[t] = bpm_latest;
@@ -254,7 +281,7 @@ void loop() {
     minute_p = minute_c;
     hour_p   = hour_c;
 
-    Serial.println("=========  Per minute section  =========");
+    debugln("=========  Per minute section  =========");
 
     klok.drawNumber(hour_c / 10,   0, 16, 6);
     klok.drawNumber(hour_c % 10,  29, 16, 6);
@@ -297,7 +324,7 @@ void loop() {
     halfMin_p = halfMin_c;
     t++;
     
-    Serial.println("=========  Per half-minute section  =========");
+    debugln("=========  Per half-minute section  =========");
 
     graph.fillRect(0, 0,320, 30, TFT_BG_RED);
     graph.fillRect(0,30,320, 15, TFT_BG_ORANGE);
@@ -334,7 +361,7 @@ void loop() {
   // =============================
   if (seconds_c != seconds_p ) {
 
-    Serial.println("=========  Per second section  =========");
+    debugln("=========  Per second section  =========");
 
     seconds_p = seconds_c;
     minute_c  = minute();
@@ -378,7 +405,7 @@ void loop() {
   if ( (millis_c - millis_p) >  250 ) {
     millis_p = millis_c;
 
-    Serial.println("=========  Per quarter-second section  =========");
+    debugln("=========  Per quarter-second section  =========");
 
     blink1=!blink1;
     if ( blink1 ){
